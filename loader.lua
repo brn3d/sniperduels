@@ -2,7 +2,8 @@ local mawu = {
     silentaim = {
         fovRadius = 100,
         wallcheck = false,
-        debug = false
+        debug = false,
+        bodyPart = "Head", -- Options: "Head", "UpperTorso", "LowerTorso", "LeftUpperArm", "RightUpperArm", "LeftUpperLeg", "RightUpperLeg", "Closest"
     },
     esp = {
         enabled = true,
