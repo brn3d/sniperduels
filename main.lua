@@ -25,7 +25,8 @@ if not shared.silentaimState then
             silentaim = {
                 fovRadius = mawu.silentaim.fovRadius,
                 wallcheck = mawu.silentaim.wallcheck,
-                debug = mawu.silentaim.debug
+                debug = mawu.silentaim.debug,
+                bodyPart = mawu.silentaim.bodyPart
             },
             esp = {
                 enabled = mawu.esp.enabled,
@@ -135,6 +136,77 @@ local function isVisible(target)
     end
 end
 
+-- Function to get bodypart by name with fallback options
+local function GetBodyPart(character, bodyPartName)
+    -- Standard humanoid parts
+    local bodyParts = {
+        ["Head"] = function() return character:FindFirstChild("Head") end,
+        ["UpperTorso"] = function() return character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso") end,
+        ["LowerTorso"] = function() 
+            local lower = character:FindFirstChild("LowerTorso")
+            if lower then return lower end
+            local torso = character:FindFirstChild("Torso")
+            return torso
+        end,
+        ["LeftUpperArm"] = function() return character:FindFirstChild("LeftUpperArm") or character:FindFirstChild("Left Arm") end,
+        ["LeftLowerArm"] = function() return character:FindFirstChild("LeftLowerArm") or character:FindFirstChild("Left Arm") end,
+        ["LeftHand"] = function() return character:FindFirstChild("LeftHand") or character:FindFirstChild("Left Arm") end,
+        ["RightUpperArm"] = function() return character:FindFirstChild("RightUpperArm") or character:FindFirstChild("Right Arm") end,
+        ["RightLowerArm"] = function() return character:FindFirstChild("RightLowerArm") or character:FindFirstChild("Right Arm") end,
+        ["RightHand"] = function() return character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm") end,
+        ["LeftUpperLeg"] = function() return character:FindFirstChild("LeftUpperLeg") or character:FindFirstChild("Left Leg") end,
+        ["LeftLowerLeg"] = function() return character:FindFirstChild("LeftLowerLeg") or character:FindFirstChild("Left Leg") end,
+        ["LeftFoot"] = function() return character:FindFirstChild("LeftFoot") or character:FindFirstChild("Left Leg") end,
+        ["RightUpperLeg"] = function() return character:FindFirstChild("RightUpperLeg") or character:FindFirstChild("Right Leg") end,
+        ["RightLowerLeg"] = function() return character:FindFirstChild("RightLowerLeg") or character:FindFirstChild("Right Leg") end,
+        ["RightFoot"] = function() return character:FindFirstChild("RightFoot") or character:FindFirstChild("Right Leg") end,
+    }
+    
+    if bodyParts[bodyPartName] then
+        local part = bodyParts[bodyPartName]()
+        if part then
+            return part
+        end
+    end
+    
+    -- Fallback to head
+    return character:FindFirstChild("Head")
+end
+
+-- Function to find the closest bodypart to the mouse cursor
+local function GetClosestBodyPart(character)
+    local camera = workspace.CurrentCamera
+    local mousePos = game:GetService("UserInputService"):GetMouseLocation()
+    
+    local bodyPartNames = {
+        "Head",
+        "UpperTorso", "LowerTorso",
+        "LeftUpperArm", "LeftLowerArm", "LeftHand",
+        "RightUpperArm", "RightLowerArm", "RightHand",
+        "LeftUpperLeg", "LeftLowerLeg", "LeftFoot",
+        "RightUpperLeg", "RightLowerLeg", "RightFoot",
+    }
+    
+    local closestDistance = math.huge
+    local closestPart = nil
+    
+    for _, bodyPartName in ipairs(bodyPartNames) do
+        local part = GetBodyPart(character, bodyPartName)
+        if part then
+            local screenPos, onScreen = camera:WorldToViewportPoint(part.Position)
+            if onScreen then
+                local distance = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                if distance < closestDistance then
+                    closestDistance = distance
+                    closestPart = part
+                end
+            end
+        end
+    end
+    
+    return closestPart
+end
+
 local function GetClosestPlayer()
     local closestDistance = math.huge
     local closest = nil
@@ -164,7 +236,16 @@ local function GetClosestPlayer()
             if distance < closestDistance then
                 if config.silentaim.wallcheck and not isVisible(head) then continue end
                 closestDistance = distance
-                closest = head
+                
+                -- Select bodypart based on config
+                local selectedPart = head
+                if config.silentaim.bodyPart == "Closest" then
+                    selectedPart = GetClosestBodyPart(char) or head
+                else
+                    selectedPart = GetBodyPart(char, config.silentaim.bodyPart) or head
+                end
+                
+                closest = selectedPart
             end
         end
     end
